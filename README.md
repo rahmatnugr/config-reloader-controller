@@ -1,6 +1,8 @@
 # config-reloader-controller
 A Kubernetes controller that watches ConfigMap and Secret changes and triggers rolling updates on associated Deployments, StatefulSets, and DaemonSets.
 
+[![asciicast](https://asciinema.org/a/AHKNR3ISY9hfhk2XzNUUE7laJ.svg)](https://asciinema.org/a/AHKNR3ISY9hfhk2XzNUUE7laJ)
+
 ## Requirements
 - Kubernetes cluster (e.g., Kind)
 - Go 1.23+
