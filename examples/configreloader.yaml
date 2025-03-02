@@ -1,0 +1,14 @@
+apiVersion: configreloader.rahmatnugraha.top/v1alpha1
+kind: ConfigReloader
+metadata:
+  name: test-config-reloader
+  namespace: default
+spec:
+  configMaps:
+    - my-configmap
+  secrets:
+    - my-secret
+  workloads:
+    - kind: Deployment
+      name: my-app
+status: {}

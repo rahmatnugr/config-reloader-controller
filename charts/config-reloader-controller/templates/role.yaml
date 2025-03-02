@@ -1,0 +1,24 @@
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "config-reloader-controller.fullname" . }}
+  labels:
+    {{- include "config-reloader-controller.labels" . | nindent 4 }}
+rules:
+- apiGroups: ["configreloader.rahmatnugraha.top"]
+  resources: ["configreloaders"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["configreloader.rahmatnugraha.top"]
+  resources: ["configreloaders/status"]
+  verbs: ["get", "update", "patch"]
+- apiGroups: ["configreloader.rahmatnugraha.top"]
+  resources: ["configreloaders/finalizers"]
+  verbs: ["update"]
+- apiGroups: ["core"]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets", "daemonsets"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+{{- end }}

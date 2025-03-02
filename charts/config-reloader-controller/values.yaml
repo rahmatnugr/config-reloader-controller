@@ -1,0 +1,32 @@
+# Default values for config-reloader-controller
+
+image:
+  repository: ghcr.io/rahmatnugr/config-reloader-controller
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: "config-reloader-controller"
+
+rbac:
+  create: true
+
+resources: {}
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
