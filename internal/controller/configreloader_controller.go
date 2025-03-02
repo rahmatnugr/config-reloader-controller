@@ -27,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	// "k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -72,12 +73,12 @@ func (r *ConfigReloaderReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			log.Error(err, "unable to fetch ConfigReloader")
 			return ctrl.Result{}, err
 		}
-		// Object not found (deleted), nothing to do
 		return ctrl.Result{}, nil
 	}
 
 	log.Info("Reconciling ConfigReloader", "name", configReloader.Name, "namespace", configReloader.Namespace)
 
+	// Track conditions and updates
 	var conditions []metav1.Condition
 	needsUpdate := false
 	now := metav1.Now()
@@ -140,24 +141,20 @@ func (r *ConfigReloaderReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		})
 	}
 
+	// Check if ConfigMap/Secret data changed
 	currentHash := configMapHash + secretHash
 	lastHash := getAnnotation(configReloader.Annotations, "configreloader.rahmatnugraha.top/last-hash")
 	if currentHash != lastHash {
 		log.Info("ConfigMap or Secret data changed", "newHash", currentHash, "lastHash", lastHash)
 		needsUpdate = true
-		// Update the last hash annotation
 		if configReloader.Annotations == nil {
 			configReloader.Annotations = make(map[string]string)
 		}
 		configReloader.Annotations["configreloader.rahmatnugraha.top/last-hash"] = currentHash
-		if err := r.Update(ctx, &configReloader); err != nil {
-			log.Error(err, "failed to update ConfigReloader annotations")
-			return ctrl.Result{}, err
-		}
 	}
 
+	// Trigger rolling updates if needed
 	if needsUpdate {
-		// Trigger rolling updates for workloads
 		for _, workload := range configReloader.Spec.Workloads {
 			switch workload.Kind {
 			case "Deployment":
@@ -253,12 +250,30 @@ func (r *ConfigReloaderReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 	}
 
+	// Prepare status update
 	configReloader.Status.ObservedGeneration = configReloader.Generation
 	configReloader.Status.LastUpdated = &metav1.Time{Time: time.Now()}
 	configReloader.Status.Conditions = conditions
-	if err := r.Status().Update(ctx, &configReloader); err != nil {
-		log.Error(err, "failed to update ConfigReloader status")
-		return ctrl.Result{}, err
+
+	// Update both spec (annotations) and status in one go if annotations changed, otherwise just status
+	if needsUpdate {
+		if err := r.Update(ctx, &configReloader); err != nil {
+			if errors.IsConflict(err) {
+				log.Info("Conflict detected while updating ConfigReloader, requeuing")
+				return ctrl.Result{Requeue: true}, nil
+			}
+			log.Error(err, "failed to update ConfigReloader")
+			return ctrl.Result{}, err
+		}
+	} else {
+		if err := r.Status().Update(ctx, &configReloader); err != nil {
+			if errors.IsConflict(err) {
+				log.Info("Conflict detected while updating ConfigReloader status, requeuing")
+				return ctrl.Result{Requeue: true}, nil
+			}
+			log.Error(err, "failed to update ConfigReloader status")
+			return ctrl.Result{}, nil
+		}
 	}
 
 	return ctrl.Result{}, nil
