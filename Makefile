@@ -117,8 +117,8 @@ helm-package: manifests ## Package Helm chart
 	helm package charts/config-reloader-controller -d charts
 
 .PHONY: helm-install
-helm-install: helm-package ## Install Helm chart using IMG from Makefile
-	helm install config-reloader-controller charts/config-reloader-controller-0.1.0.tgz \
+helm-install: 
+	helm install config-reloader-controller ./charts/config-reloader-controller \
 		--set image.repository=$(shell echo $(IMG) | cut -d':' -f1) \
 		--set image.tag=$(shell echo $(IMG) | cut -d':' -f2) \
 		-n default --create-namespace
